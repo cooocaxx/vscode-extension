@@ -418,6 +418,13 @@ export function activate(context: vscode.ExtensionContext) {
 
     // 7. 烧录 (Download) 命令：解析 download 脚本来获取参数
     let disposableDownload = vscode.commands.registerCommand('sf32.download', async () => {
+
+        // 自动配置环境
+        setTimeout(() => {
+            vscode.commands.executeCommand('sf32.build');
+        }, 1000);
+
+
         const config = vscode.workspace.getConfiguration('sf32');
         const projectPathConfig = config.get<string>('projectPath');
         const resolvedProjectPath = resolvePath(projectPathConfig, true);
