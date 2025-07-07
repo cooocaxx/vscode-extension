@@ -1,0 +1,91 @@
+{
+    "name": "sf32-toolkit",
+    "displayName": "SF32 Toolkit",
+    "description": "用于 macOS && windows 上 SF32 开发的 VS Code 扩展，简化环境设置和构建命令。",
+    "version": "0.0.3",
+    "publisher": "kaka",
+    "engines": {
+        "vscode": "^1.80.0"
+    },
+    "categories": [
+        "Other",
+        "Build and Debug"
+    ],
+    "activationEvents": [
+        "workspaceContains:**/rtconfig.py",
+        "onCommand:sf32.setupEnvironment",
+        "onCommand:sf32.build",
+        "onCommand:sf32.menuconfig",
+        "onCommand:sf32.clean",
+        "onCommand:sf32.selectBoard"
+    ],
+    "main": "./out/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "sf32.setupEnvironment",
+                "title": "SF32: 设置环境",
+                "category": "SF32"
+            },
+            {
+                "command": "sf32.build",
+                "title": "SF32: 编译项目",
+                "category": "SF32"
+            },
+            {
+                "command": "sf32.menuconfig",
+                "title": "SF32: 菜单配置",
+                "category": "SF32"
+            },
+            {
+                "command": "sf32.clean",
+                "title": "SF32: 清理项目",
+                "category": "SF32"
+            },
+            {
+                "command": "sf32.selectBoard",
+                "title": "SF32: 选择开发板",
+                "category": "SF32"
+            }
+        ],
+        "configuration": {
+            "title": "SF32 工具包配置",
+            "properties": {
+                "sf32.sdkPath": {
+                    "type": "string",
+                    "default": "~/Documents/OpenSiFli/SiFli-SDK",
+                    "description": "SF32 SDK 的路径（例如：~/Documents/OpenSiFli/SiFli-SDK/）。"
+                },
+                "sf32.projectPath": {
+                    "type": "string",
+                    "description": "SF32 项目的路径。如果未设置，将自动尝试使用当前VS Code工作区的根目录。"
+                },
+                "sf32.customBoardModels": {
+                    "type": "array",
+                    "default": [],
+                    "description": "添加自定义的 SF32 开发板型号列表。每个型号一个字符串，例如: [\"my_custom_board\", \"another_board\" ]",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "pretest": "npm run compile && npm run lint",
+        "lint": "eslint src --ext ts",
+        "test": "node ./out/test/runTests.js"
+    },
+    "devDependencies": {
+        "@types/vscode": "^1.80.0",
+        "@types/node": "^18.17.1",
+        "@typescript-eslint/eslint-plugin": "^6.4.1",
+        "@typescript-eslint/parser": "^6.4.1",
+        "eslint": "^8.47.0",
+        "typescript": "^5.1.6",
+        "@vscode/test-electron": "^2.3.4"
+    }
+}
