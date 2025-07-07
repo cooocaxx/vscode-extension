@@ -1,7 +1,7 @@
 {
     "name": "sf32-toolkit",
     "displayName": "SF32 Toolkit",
-    "description": "用于 macOS 上 SF32 开发的 VS Code 扩展，简化环境设置和构建命令。",
+    "description": "VS Code 扩展，用于简化 SF32 嵌入式开发，提供环境设置、项目编译、菜单配置、串口选择和程序烧录等功能。",
     "version": "0.0.3",
     "publisher": "kaka",
     "engines": {
@@ -18,7 +18,8 @@
         "onCommand:sf32.menuconfig",
         "onCommand:sf32.clean",
         "onCommand:sf32.selectBoard",
-        "onCommand:sf32.download" 
+        "onCommand:sf32.download",
+        "onCommand:sf32.selectSerialPort"
     ],
     "main": "./out/extension.js",
     "contributes": {
@@ -52,6 +53,11 @@
                 "command": "sf32.download",
                 "title": "SF32: 烧录程序",
                 "category": "SF32"
+            },
+            {
+                "command": "sf32.selectSerialPort",
+                "title": "SF32: 选择串口",
+                "category": "SF32"
             }
         ],
         "configuration": {
@@ -66,6 +72,10 @@
                     "type": "string",
                     "description": "SF32 项目的路径。如果未设置，将自动尝试使用当前VS Code工作区的根目录。"
                 },
+                "sf32.sftoolCommandPrefix": {
+                    "type": "string",
+                    "description": "sftool 工具的完整调用前缀（例如：`C:\\Users\\youruser\\.sifli\\tools\\sftool\\0.1.7\\sftool` 或 `/usr/local/bin/sftool`）。**请确保这个前缀是可以在你的系统终端直接运行 sftool 的命令，且不会被自动添加双引号。**"
+                },
                 "sf32.customBoardModels": {
                     "type": "array",
                     "default": [],
@@ -73,9 +83,17 @@
                     "items": {
                         "type": "string"
                     }
+                },
+                "sf32.serialPort": {
+                    "type": "string",
+                    "description": "用于烧录的串口号（例如：COM3 或 /dev/ttyUSB0）。",
+                    "default": ""
                 }
             }
         }
+    },
+    "dependencies": {
+        "serialport": "^12.0.0"
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
@@ -92,6 +110,7 @@
         "@typescript-eslint/parser": "^6.4.1",
         "eslint": "^8.47.0",
         "typescript": "^5.1.6",
-        "@vscode/test-electron": "^2.3.4"
+        "@vscode/test-electron": "^2.3.4",
+        "@types/mocha": "^10.0.6"
     }
 }
