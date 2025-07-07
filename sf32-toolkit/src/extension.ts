@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import { SerialPort } from 'serialport';
 
 // ====================================================================
-// 全局变量和辅助函数
+// 全局变量和辅助函数 (保持不变)
 // ====================================================================
 
 let sf32Terminal: vscode.Terminal | undefined;
@@ -149,9 +149,68 @@ async function selectSerialPort() {
     }
 }
 
+// ====================================================================
+// 优化后的辅助函数：解析下载脚本，现在返回相对路径
+// ====================================================================
+
+/**
+ * 从脚本内容中解析出 sftool write_flash 后面的文件@地址参数列表。
+ * @param scriptContent 脚本文件的完整内容
+ * @returns 格式化后的文件参数字符串数组，例如: ['"bootloader/bootloader.bin@0x12010000"', '"main.bin@0x12020000"']
+ * 注意：这里返回的是脚本中的相对路径，因为我们会在终端中先 cd 到基准目录。
+ */
+async function parseDownloadScript(scriptContent: string): Promise<string[]> {
+    const lines = scriptContent.split(/\r?\n/);
+    let sftoolLine: string | undefined;
+
+    // 查找包含 "sftool" 和 "write_flash" 的行
+    for (const line of lines) {
+        const trimmedLine = line.trim();
+        // 确保匹配的是以 sftool 开头的行，避免匹配到注释或其他包含sftool的文本
+        if ((trimmedLine.startsWith('sftool') || trimmedLine.startsWith('".\\sftool"')) && trimmedLine.includes('write_flash')) {
+            sftoolLine = trimmedLine;
+            break;
+        }
+    }
+
+    if (!sftoolLine) {
+        vscode.window.showErrorMessage('未能在下载脚本中找到 "sftool ... write_flash" 命令。');
+        return [];
+    }
+
+    // 提取 write_flash 后面的参数
+    const writeFlashIndex = sftoolLine.indexOf('write_flash');
+    if (writeFlashIndex === -1) {
+        vscode.window.showErrorMessage('下载脚本中的 "sftool" 命令格式不正确，未找到 "write_flash"。');
+        return [];
+    }
+
+    // 截取 write_flash 后面的部分
+    const paramsString = sftoolLine.substring(writeFlashIndex + 'write_flash'.length).trim();
+
+    // 使用正则表达式来匹配被双引号包裹的 "文件名@地址" 字符串
+    // 匹配如 "file.bin@0xADDR" 或 "dir/file.bin@0xADDR"
+    const regex = /"([^"]+?@0x[0-9a-fA-F]+)"/g;
+    let match;
+    const rawParams: string[] = [];
+
+    while ((match = regex.exec(paramsString)) !== null) {
+        // 这里直接将提取到的原始参数（例如 "bootloader/bootloader.bin@0x12010000"）
+        // 重新用双引号包裹后返回，因为 sftool 需要引号来处理路径中的斜杠或特殊字符
+        rawParams.push(`"${match[1]}"`);
+    }
+
+    if (rawParams.length === 0) {
+        vscode.window.showErrorMessage('未能在下载脚本中解析到有效的烧录文件参数。');
+        return [];
+    }
+
+    return rawParams; // 直接返回已用引号包裹的相对路径参数
+}
+
 
 // ====================================================================
-// 激活插件函数 (activate)
+// 激活插件函数 (activate) - 保持不变
 // ====================================================================
 
 export function activate(context: vscode.ExtensionContext) {
@@ -190,9 +249,9 @@ export function activate(context: vscode.ExtensionContext) {
             const rtconfigPySubdirPath = path.join(potentialSubdirProjectPath, 'rtconfig.py');
 
             console.log(`SF32 Toolkit: 检查 'project' 子目录文件存在性 -`);
-            console.log(`  SConstruct (subdir): ${fs.existsSync(sconstructSubdirPath)} (${sconstructSubdirPath})`);
-            console.log(`  Kconfig (subdir): ${fs.existsSync(kconfigSubdirPath)} (${kconfigSubdirPath})`);
-            console.log(`  rtconfig.py (subdir): ${fs.existsSync(rtconfigPySubdirPath)} (${rtconfigPySubdirPath})`);
+            console.log(`  SConstruct (subdir): ${fs.existsSync(sconstructSubdirPath)} (${fs.existsSync(sconstructSubdirPath)})`);
+            console.log(`  Kconfig (subdir): ${fs.existsSync(kconfigSubdirPath)} (${fs.existsSync(kconfigSubdirPath)})`);
+            console.log(`  rtconfig.py (subdir): ${fs.existsSync(rtconfigPySubdirPath)} (${fs.existsSync(rtconfigPySubdirPath)})`);
 
             if (fs.existsSync(sconstructSubdirPath) &&
                 fs.existsSync(kconfigSubdirPath) &&
@@ -257,6 +316,11 @@ export function activate(context: vscode.ExtensionContext) {
         cleanButton.tooltip = '点击清理 SF32 项目';
         cleanButton.show();
         context.subscriptions.push(cleanButton);
+
+        // 自动配置环境
+        setTimeout(() => {
+            vscode.commands.executeCommand('sf32.setupEnvironment');
+        }, 1000);
     }
 
     // --- 注册命令 ---
@@ -280,6 +344,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         if (process.platform === 'win32') {
             // Windows: 切换到SDK目录，执行export.ps1，再切换到项目目录
+            // 在PowerShell中，通常使用分号 ; 连接命令
             command = `Set-Location -Path "${sdkPath}"; .\\export.ps1; Set-Location -Path "${projectPath}"`;
         } else {
             // macOS/Linux: 切换到SDK目录，执行export.sh，再切换到项目目录
@@ -351,19 +416,17 @@ export function activate(context: vscode.ExtensionContext) {
     // 6. 选择串口命令
     let disposableSelectSerialPort = vscode.commands.registerCommand('sf32.selectSerialPort', selectSerialPort);
 
-    // 7. 烧录 (Download) 命令：不依赖于当前终端的目录，直接调用 sftool
+    // 7. 烧录 (Download) 命令：解析 download 脚本来获取参数
     let disposableDownload = vscode.commands.registerCommand('sf32.download', async () => {
         const config = vscode.workspace.getConfiguration('sf32');
         const projectPathConfig = config.get<string>('projectPath');
-        const resolvedProjectPath = resolvePath(projectPathConfig, true); // 仍然获取项目路径，用于构建固件路径
+        const resolvedProjectPath = resolvePath(projectPathConfig, true);
         const serialPort = config.get<string>('serialPort');
         let sftoolCommandPrefix = config.get<string>('sftoolCommandPrefix');
 
         if (!sftoolCommandPrefix) {
             const setupSftool = await vscode.window.showWarningMessage(
-                'sftool 工具调用前缀未配置。请在VS Code设置中配置 "SF32 Toolkit: Sftool Command Prefix"。' +
-                '例如：`C:\\Users\\youruser\\.sifli\\tools\\sftool\\0.1.7\\sftool` (Windows) 或 `/usr/local/bin/sftool`。' +
-                '请确保您提供的字符串就是可以在终端直接运行的命令前缀，**它不会被自动添加双引号**。',
+                'sftool 工具调用前缀未配置。请在VS Code设置中配置 "SF32 Toolkit: Sftool Command Prefix"。',
                 '去设置', '取消'
             );
             if (setupSftool === '去设置') {
@@ -384,52 +447,61 @@ export function activate(context: vscode.ExtensionContext) {
         }
 
         if (!resolvedProjectPath) {
-            vscode.window.showWarningMessage('无法确定项目路径以查找固件文件。请确保工作区已打开或已配置 "SF32 Toolkit: Project Path"。');
-            return;
-        }
-        const buildDir = path.join(resolvedProjectPath, `build_${currentBoardModel}_hcpu`);
-
-        const bootloaderPath = path.join(buildDir, 'bootloader', 'bootloader.bin');
-        const mainBinPath = path.join(buildDir, 'main.bin');
-        const ftabPath = path.join(buildDir, 'ftab', 'ftab.bin');
-
-        if (!fs.existsSync(bootloaderPath)) {
-            vscode.window.showWarningMessage(`烧录文件缺失: ${bootloaderPath}。请先编译项目。`);
-            return;
-        }
-        if (!fs.existsSync(mainBinPath)) {
-            vscode.window.showWarningMessage(`烧录文件缺失: ${mainBinPath}。请先编译项目。`);
-            return;
-        }
-        if (!fs.existsSync(ftabPath)) {
-            vscode.window.showWarningMessage(`烧录文件缺失: ${ftabPath}。请先编译项目。`);
+            vscode.window.showWarningMessage('无法确定项目路径。请确保工作区已打开或已配置 "SF32 Toolkit: Project Path"。');
             return;
         }
 
-        // 关键修正：将路径和地址组合后，再用双引号包裹整个字符串
-        // 对于 Windows 路径，保留反斜杠，它们在双引号内是字面量。
-        const formattedBootloaderParam = `"${bootloaderPath}@0x12010000"`;
-        const formattedMainBinParam = `"${mainBinPath}@0x12020000"`;
-        const formattedFtabParam = `"${ftabPath}@0x12000000"`;
+        const buildDirName = `build_${currentBoardModel}_hcpu`; // 根据当前板型构建 build 目录名
+        const buildDirPath = path.join(resolvedProjectPath, buildDirName); // 获取完整的 build 目录路径
 
+        let downloadScriptFileName = process.platform === 'win32' ? 'uart_download.bat' : 'uart_download.sh';
+        const downloadScriptPath = path.join(buildDirPath, downloadScriptFileName);
 
-        const downloadFilePaths = `${formattedBootloaderParam} ${formattedMainBinParam} ${formattedFtabParam}`;
-
-        let downloadCommand: string;
-
-        if (process.platform === 'win32') {
-            // Windows: 串口名例如 "COM3"
-            downloadCommand = `${sftoolCommandPrefix} -p "${serialPort}" -c SF32LB52 write_flash ${downloadFilePaths}`;
-        } else {
-            // macOS/Linux: 串口名例如 "/dev/ttyUSB0"
-            // macOS/Linux 下路径通常是正斜杠，为了保险起见，将路径参数中的反斜杠替换为正斜杠。
-            // sftoolCommandPrefix 用户设置时就应该确保其在各自平台的可执行性。
-            downloadCommand = `${sftoolCommandPrefix} -p "${serialPort}" -c SF32LB52 write_flash ${downloadFilePaths.replace(/\\/g, '/')}`;
+        if (!fs.existsSync(downloadScriptPath)) {
+            vscode.window.showErrorMessage(`下载脚本未找到: ${downloadScriptPath}。请检查您的SF32项目结构或确保已编译项目以生成该脚本。`);
+            return;
         }
 
-        const term = getSF32Terminal();
-        term.sendText(downloadCommand);
-        vscode.window.showInformationMessage(`SF32 项目 (${currentBoardModel}) 正在烧录中...`);
+        try {
+            const scriptContent = fs.readFileSync(downloadScriptPath, 'utf8');
+            const fileParams = await parseDownloadScript(scriptContent);
+
+            if (fileParams.length === 0) {
+                vscode.window.showErrorMessage('未能从下载脚本中解析出烧录文件参数。');
+                return;
+            }
+
+            const downloadFilePaths = fileParams.join(' ');
+            const term = getSF32Terminal();
+
+            let fullCommand: string;
+
+            if (process.platform === 'win32') {
+                // Windows PowerShell：使用分号 ; 连接命令
+                // Set-Location 才是 PowerShell 中的标准命令
+                const cdToBuildCommand = `Set-Location -Path "${buildDirPath}"`;
+                const sftoolCommand = `${sftoolCommandPrefix} -p "${serialPort}" -c SF32LB52 write_flash ${downloadFilePaths}`;
+                const cdBackToProjectCommand = `Set-Location -Path "${resolvedProjectPath}"`;
+
+                // 使用分号连接所有命令
+                fullCommand = `${cdToBuildCommand}; ${sftoolCommand}; ${cdBackToProjectCommand}`;
+            } else {
+                // macOS/Linux Bash：使用 && 连接命令
+                const cdToBuildCommand = `cd "${buildDirPath}"`;
+                const sftoolCommand = `${sftoolCommandPrefix} -p "${serialPort}" -c SF32LB52 write_flash ${downloadFilePaths}`;
+                const cdBackToProjectCommand = `cd "${resolvedProjectPath}"`;
+
+                // 使用 && 连接所有命令
+                fullCommand = `${cdToBuildCommand} && ${sftoolCommand} && ${cdBackToProjectCommand}`;
+            }
+
+            term.sendText(fullCommand);
+            vscode.window.showInformationMessage(`SF32 项目 (${currentBoardModel}) 正在烧录中 (已切换目录并返回)...`);
+
+        } catch (error: any) {
+            vscode.window.showErrorMessage(`解析下载脚本失败: ${error.message || error}`);
+            console.error('Download script parsing error:', error);
+        }
     });
 
     context.subscriptions.push(
@@ -444,7 +516,7 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // ====================================================================
-// 停用插件函数 (deactivate)
+// 停用插件函数 (deactivate) - 保持不变
 // ====================================================================
 
 export function deactivate() {

@@ -2,7 +2,7 @@
     "name": "sf32-toolkit",
     "displayName": "SF32 Toolkit",
     "description": "VS Code 扩展，用于简化 SF32 嵌入式开发，提供环境设置、项目编译、菜单配置、串口选择和程序烧录等功能。",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "publisher": "kaka",
     "engines": {
         "vscode": "^1.80.0"
@@ -112,5 +112,9 @@
         "typescript": "^5.1.6",
         "@vscode/test-electron": "^2.3.4",
         "@types/mocha": "^10.0.6"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/cooocaxx/vscode-extension.git"
     }
 }
