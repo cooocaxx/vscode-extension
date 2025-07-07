@@ -1,7 +1,7 @@
 {
     "name": "sf32-toolkit",
     "displayName": "SF32 Toolkit",
-    "description": "用于 macOS && windows 上 SF32 开发的 VS Code 扩展，简化环境设置和构建命令。",
+    "description": "用于 macOS 上 SF32 开发的 VS Code 扩展，简化环境设置和构建命令。",
     "version": "0.0.3",
     "publisher": "kaka",
     "engines": {
@@ -17,7 +17,8 @@
         "onCommand:sf32.build",
         "onCommand:sf32.menuconfig",
         "onCommand:sf32.clean",
-        "onCommand:sf32.selectBoard"
+        "onCommand:sf32.selectBoard",
+        "onCommand:sf32.download" 
     ],
     "main": "./out/extension.js",
     "contributes": {
@@ -45,6 +46,11 @@
             {
                 "command": "sf32.selectBoard",
                 "title": "SF32: 选择开发板",
+                "category": "SF32"
+            },
+            {
+                "command": "sf32.download",
+                "title": "SF32: 烧录程序",
                 "category": "SF32"
             }
         ],
