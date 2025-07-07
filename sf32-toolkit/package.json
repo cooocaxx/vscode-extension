@@ -79,7 +79,7 @@
                 "sf32.customBoardModels": {
                     "type": "array",
                     "default": [],
-                    "description": "添加自定义的 SF32 开发板型号列表。每个型号一个字符串，例如: [\"my_custom_board\", \"another_board\" ]",
+                    "description": "添加自定义的 SF32 开发板型号列表。每个型号一个字符串，例如: [my_custom_board, another_board ]",
                     "items": {
                         "type": "string"
                     }
