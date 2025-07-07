@@ -11,6 +11,7 @@
 * **菜单配置**: 方便地通过 VS Code 直接打开 Kconfig 菜单，图形化配置您的项目参数和功能。
 * **项目清理**: 轻松清理编译生成的所有中间文件和目标文件，保持项目目录整洁。
 * **开发板选择**: 通过 VS Code 底部状态栏快速切换预设或自定义的开发板型号，确保编译目标正确。
+* **串口选择**: 通过 VS Code 底部状态栏快速切换串口目标，确保下载正确。
 
 ---
 
@@ -38,3 +39,5 @@
 * **`sf32.sdkPath`**: SF32 SDK 的安装路径（例如：`~/Documents/OpenSiFli/SiFli-SDK`）。**这是使用插件前必须设置的项。**
 * **`sf32.projectPath`**: SF32 项目的特定路径。**通常无需手动设置**，插件会优先自动检测当前工作区根目录或其 `project` 子目录。仅在自动检测失败或您有特殊项目结构时才需要配置。
 * **`sf32.customBoardModels`**:用于添加您自定义的开发板型号。这些自定义型号将显示在 `SF32 Board` 选择列表中。例如：`["my_custom_board", "another_board"]`。
+
+* **`sf32.sftoolPath`**:用于添加您sftool 。将在下载中使用。例如：`[你的sftool "C:\tools\sftool\0.1.7\sftool.exe", 实际填入 "C:\tools\sftool\0.1.7\sftool"]`。
