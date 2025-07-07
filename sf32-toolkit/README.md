@@ -41,6 +41,6 @@
 
 * **`sf32.sdkPath`**: SF32 SDK 的安装路径（例如：`~/Documents/OpenSiFli/SiFli-SDK`）。**这是使用插件前必须设置的项。**
 * **`sf32.projectPath`**: SF32 项目的特定路径。**通常无需手动设置**，插件会优先自动检测当前工作区根目录或其 `project` 子目录。仅在自动检测失败或您有特殊项目结构时才需要配置。
-* **`sf32.customBoardModels`**:用于添加您自定义的开发板型号。这些自定义型号将显示在 `SF32 Board` 选择列表中。例如：`["my_custom_board", "another_board"]`。
+* **`sf32.customBoardModels`**:用于添加您自定义的开发板型号。这些自定义型号将显示在 `SF32 Board` 选择列表中。例如：`[my_custom_board, another_board]`。
 
 * **`sf32.sftoolPath`**:用于添加您sftool 。将在下载中使用。例如：`[你的sftool "C:\tools\sftool\0.1.7\sftool.exe", 实际填入 "C:\tools\sftool\0.1.7\sftool"]`。
